@@ -193,7 +193,8 @@ SELECT something,
 ### Block suppression
 
 A `disable-block <rule|all>` directive on the line that opens a `/* */` block
-comment suppresses the rule for every line in that block.
+comment suppresses the rule for every line in that block. A reason may
+follow after a colon, e.g. `disable-block all: reason here`.
 
 For the common case — commenting out a chunk of code without the linter
 demanding ` * ` prefixes (or other comment styling) on each line — use the
@@ -225,6 +226,13 @@ SELECT n1.nspname AS fk_schema_name,
        c1.relname AS fk_table_name
   FROM pg_catalog.pg_constraint k1
 -- sql-lint:enable-block
+```
+
+A reason can follow `all` or a rule id after a colon — it's ignored by the
+matcher, but says *why* for the next reader:
+
+```sql
+-- sql-lint:disable-block all: borrowed verbatim, do not reformat
 ```
 
 ## Adding New Rules

@@ -233,6 +233,15 @@ subtest 'region suppression: disable-block/enable-block around real code' => sub
 
     my ($rc_unclosed) = lint_string("-- sql-lint:disable-block all\nSELECT a,\nSELECT b,\n");
     is($rc_unclosed, 0, 'unclosed disable-block suppresses through EOF');
+
+    my ($rc_reason_all) = lint_string(
+        "-- sql-lint:disable-block all: borrowed code, left as-is\nSELECT a,\n-- sql-lint:enable-block\n");
+    is($rc_reason_all, 0, 'trailing reason after "all:" does not break suppression');
+
+    my (undef, $out_reason_rule) = lint_string(
+        "-- sql-lint:disable-block trailing-comma: reason here\nSELECT a integer,\n-- sql-lint:enable-block\n");
+    like($out_reason_rule, qr/prefer-short-type/, 'trailing reason: other rules still fire');
+    unlike($out_reason_rule, qr/trailing-comma/, 'trailing reason: named rule is still suppressed');
 };
 
 subtest 'multi-line single-quoted string keeps state across lines' => sub {

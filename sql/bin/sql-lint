@@ -171,7 +171,9 @@ sub annotate_region_suppressions {
     my ($lines) = @_;
     my @stack;
     for my $l (@$lines) {
-        if ($l->{text} =~ /sql-lint:disable-block\s+(\S+)/) {
+        # Rule id / "all" only — [\w-]* stops at a trailing `:` so a reason
+        # can follow, e.g. `disable-block all: borrowed code, left as-is`.
+        if ($l->{text} =~ /sql-lint:disable-block\s+([a-zA-Z][\w-]*)/) {
             push @stack, $1;
         }
         for my $r (@stack) {
