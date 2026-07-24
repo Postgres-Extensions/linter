@@ -60,9 +60,10 @@ The statement boundary tracker is the key infrastructure piece — building it
 unlocks semicolon-placement and comment-ordering. Variable-naming needs
 separate dollar-quote block awareness.
 
-The `lint/` directory structure supports adding linters for other languages
-in the future (e.g. `lint/plpgsql/`, `lint/bash/`). Each linter is a
-subdirectory with its own `Makefile`; `lint/Makefile` aggregates them.
+This repo's structure supports adding linters for other languages in the
+future (e.g. `plpgsql/`, `bash/`, as siblings to `sql/`). Each linter is a
+subdirectory with its own `Makefile`; the top-level `Makefile` aggregates
+them.
 
 ## History
 

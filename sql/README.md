@@ -1,18 +1,20 @@
 # sql-lint
 
-Style linter for PostgreSQL SQL files. Enforces this project's SQL coding
-conventions (block comments, leading commas, short type names — see the
-"SQL file conventions" and "Code Style" sections of `CLAUDE.md`).
+Style linter for PostgreSQL SQL files: block comment formatting, leading
+commas, short type names, and a suppression syntax for the rest.
+
+Consuming projects vendor this repo — see the top-level
+[README.md](../README.md) for how a project wires up `make lint`.
 
 ## Quick Start
 
 ```bash
-# Lint the project's SQL from the repo root (paths are set in Makefile's
-# LINT_TARGETS; see lint/lint.mk)
+# From a project that vendors this repo (paths are set by that project's
+# own LINT_TARGETS; see ../lint.mk)
 make lint
 
 # Run the linter directly on specific files or directories
-lint/sql/bin/sql-lint sql/cat_tools.sql.in test/
+.vendor/linter/sql/bin/sql-lint sql/myext.sql.in test/
 ```
 
 ## Usage
@@ -259,12 +261,13 @@ Then add test fixtures and/or inline tests:
 
 ## Testing
 
-Tests use Perl's `Test::More` + `prove` to test the linter itself (not
-the extension code — that's what `make lint` is for):
+Tests use Perl's `Test::More` + `prove` to test the linter itself (not a
+consuming project's SQL — that's what `make lint` is for, from a project
+that vendors this repo):
 
 ```bash
-make -C lint test         # all linters (currently just sql)
-make -C lint/sql test     # sql linter only
+make test         # all linters in this repo (currently just sql)
+make -C sql test  # sql linter only
 ```
 
 ## Design
@@ -273,6 +276,6 @@ See [DESIGN.md](DESIGN.md) for architecture decisions and rationale.
 
 ## Future
 
-The `lint/` directory is designed to host linters for other languages
-(e.g. PL/pgSQL, bash). Each would be a sibling to `sql/` with its own
-`Makefile` and test suite.
+This repo is designed to host linters for other languages too (e.g.
+PL/pgSQL, bash). Each would be a sibling to `sql/` with its own `Makefile`
+and test suite, aggregated by the top-level `Makefile`.
