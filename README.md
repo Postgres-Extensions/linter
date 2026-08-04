@@ -20,10 +20,19 @@ That hand-off file is the entire API — nothing else needs to be copied:
 # lint.mk — thin wrapper; the whole local footprint for consuming
 # https://github.com/Postgres-Extensions/linter. Everything else lives in
 # the .vendor/linter submodule; see its README for available targets/rules.
+#
+# Guarded by $(wildcard .git) so `make dist`/PGXN release tarballs (built via
+# `git archive`, which strips .git and submodule content entirely) don't try
+# to init the submodule and abort the whole Makefile parse -- `make lint`
+# just becomes unavailable there, which is fine since PGXN consumers don't
+# need it. Matches both a real .git directory (plain clone) and the .git
+# file pointer used inside a git worktree.
+ifneq ($(wildcard .git),)
 .vendor/linter/lint.mk:
 	git submodule update --init -- .vendor/linter
 
 include .vendor/linter/lint.mk
+endif
 ```
 
 Add the submodule once:
