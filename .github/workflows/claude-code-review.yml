@@ -21,19 +21,19 @@ concurrency:
 
 jobs:
   claude-review:
-    # Trusted fork only, and skip drafts (don't spend API/CI on unfinished PRs).
-    # To add more trusted owners, extend the head-owner check.
+    # Trusted author only, and skip drafts (don't spend API/CI on unfinished PRs).
+    # To add more trusted authors, extend the author check.
     #
-    # SECURITY-CRITICAL: this owner check is the ONLY thing that makes
+    # SECURITY-CRITICAL: this author check is the ONLY thing that makes
     # `allow-unsafe-pr-checkout: true` below acceptable. Without it, this
     # pull_request_target job would check out and let Claude act on
     # arbitrary fork code while holding base-repo secrets/token — a "pwn
     # request". Do not remove or loosen this condition (e.g. drop the
-    # owner check, or allow non-owner forks) without re-evaluating the
+    # author check, or allow untrusted authors) without re-evaluating the
     # fork-checkout step's safety.
     if: >-
       github.event.pull_request.draft == false &&
-      github.event.pull_request.head.repo.owner.login == 'jnasbyupgrade'
+      github.event.pull_request.user.login == 'jnasbyupgrade'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
