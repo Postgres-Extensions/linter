@@ -1,13 +1,15 @@
 name: CI
+# Deliberately no `paths-ignore: '**.md'` here (a prior version had one on
+# both triggers): with it, a doc-only push/PR never runs this workflow at
+# all, so a required "all-checks-passed" status check for such a PR would
+# never report and would sit stuck Pending in branch protection forever,
+# instead of passing. `test` is a single cheap Perl job with no matrix to
+# skip for cost reasons, so there's no tradeoff in just always running it.
 on:
   push:
     branches:
       - main
-    paths-ignore:
-      - '**.md'
   pull_request:
-    paths-ignore:
-      - '**.md'
 jobs:
   test:
     name: Perl tests
@@ -17,3 +19,39 @@ jobs:
         uses: actions/checkout@v6
       - name: Run test suite
         run: make test
+
+  # A single stable check name for use as a required status check in branch
+  # protection rules, so a future job rename/addition doesn't require a
+  # matching branch-protection update. Passes if all other jobs passed or
+  # were skipped, fails if any failed or were cancelled.
+  all-checks-passed:
+    needs: [test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Verify all jobs are listed in needs
+        # Ensures this job won't silently ignore a newly-added job that was
+        # omitted from the needs list above.
+        run: |
+          DEFINED=$(python3 -c "
+          import yaml
+          with open('.github/workflows/ci.yml') as f:
+              w = yaml.safe_load(f)
+          print('\n'.join(sorted(j for j in w['jobs'] if j != 'all-checks-passed')))
+          ")
+          NEEDED=$(echo '${{ toJson(needs) }}' | python3 -c "
+          import json, sys
+          print('\n'.join(sorted(json.load(sys.stdin))))
+          ")
+          if [ "$DEFINED" != "$NEEDED" ]; then
+            echo "Some jobs are missing from all-checks-passed needs:"
+            diff <(echo "$DEFINED") <(echo "$NEEDED")
+            exit 1
+          fi
+      - name: Check all jobs passed or were skipped
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "One or more jobs failed or were cancelled"
+            exit 1
+          fi
