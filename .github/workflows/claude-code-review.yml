@@ -6,16 +6,18 @@ name: Claude Code Review
 # `pull_request` version never worked for fork PRs.
 #
 # SECURITY: pull_request_target runs in the BASE repo with secrets and a
-# write-capable token. The job is gated to PRs from the trusted `jnasbyupgrade`
-# fork only — an arbitrary external fork can never trigger this secret-bearing
-# job. The workflow file always comes from the base branch (main), so a PR
-# cannot modify the reviewer that runs on it. We never check out the fork's PR
-# head ourselves here: anthropics/claude-code-action's own internal checkout
-# logic (setupBranch() in src/github/operations/branch.ts) already fetches the
-# PR branch via `git fetch origin pull/<N>/head`, which requires `origin` to be
-# the BASE repo -- checking out the fork directly instead (as a prior version
-# of this file did) points `origin` at the fork, which has no such ref, and
-# breaks that fetch with "couldn't find remote ref pull/<N>/head".
+# write-capable token. The job is gated to PRs opened by the trusted
+# `jnasbyupgrade` account only (PR author, not head repo owner -- see the
+# job's own `if:` comment for why) — an untrusted author can never trigger
+# this secret-bearing job. The workflow file always comes from the base
+# branch (main), so a PR cannot modify the reviewer that runs on it. We
+# never check out the fork's PR head ourselves here: anthropics/claude-code-action's
+# own internal checkout logic (setupBranch() in src/github/operations/branch.ts)
+# already fetches the PR branch via `git fetch origin pull/<N>/head`, which
+# requires `origin` to be the BASE repo -- checking out the fork directly
+# instead (as a prior version of this file did) points `origin` at the fork,
+# which has no such ref, and breaks that fetch with "couldn't find remote ref
+# pull/<N>/head".
 on:
   pull_request_target:
     # labeled: lets adding the claude-debug label (see the "Check for
@@ -38,17 +40,29 @@ concurrency:
 
 jobs:
   claude-review:
-    # Trusted fork only, and skip drafts (don't spend API/CI on unfinished PRs).
-    # To add more trusted owners, extend the head-owner check.
+    # Trusted author only, and skip drafts (don't spend API/CI on unfinished PRs).
+    # To add more trusted authors, extend the author check.
     #
-    # SECURITY-CRITICAL: this owner check is what makes it safe to run this
+    # SECURITY-CRITICAL: this author check is what makes it safe to run this
     # pull_request_target job -- which holds base-repo secrets/token -- on
     # every fork PR unattended. Do not remove or loosen this condition (e.g.
-    # drop the owner check, or allow non-owner forks) without re-evaluating
+    # drop the author check, or allow untrusted authors) without re-evaluating
     # whether this job should keep running on arbitrary forks.
+    #
+    # Checks PR AUTHOR (user.login), not head.repo.owner.login: the latter
+    # only distinguishes fork ownership for fork-headed PRs. For an
+    # upstream-branch-headed PR (base and head both in this repo -- what `gh
+    # stack` requires, or any `gh pr create` without forking), head.repo is
+    # always this repo itself, so head.repo.owner.login is always the org,
+    # never the actual author -- that silently skipped review on legitimately
+    # trusted PRs (confirmed via the Checks API reporting `claude-review` as
+    # "skipped" on a trusted upstream-branch PR stack). user.login can't be
+    # spoofed by a third party any more than head repo owner can, and it's
+    # the more direct question for this gate's actual purpose: trusting the
+    # PERSON asking for a review, not the repository their branch lives in.
     if: >-
       github.event.pull_request.draft == false &&
-      github.event.pull_request.head.repo.owner.login == 'jnasbyupgrade' &&
+      github.event.pull_request.user.login == 'jnasbyupgrade' &&
       (github.event.action != 'labeled' || github.event.label.name == 'claude-debug')
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -61,7 +75,7 @@ jobs:
       # grants cancelling/deleting workflow runs and managing artifacts, which
       # this job doesn't use). Without it, claude-code-review's own setup step
       # can never write a cache, only ever miss. Granted here on top of the
-      # existing trusted-fork-owner gate below, not instead of it.
+      # existing trusted-author gate below, not instead of it.
       actions: write
     steps:
       # DEBUG MODE: add the "claude-debug" label to a PR to (a) skip the cost
